@@ -24,18 +24,20 @@ def home():
     return render_template_string(HTML_FORM)
 
 @app.route('/playlist.m3u')
-def proxy_m3u():
+def serve_m3u():
     m3u_url = request.args.get('url')
     if not m3u_url:
-        return "Error: No M3U URL provided", 400
+        return render_template_string(HTML_FORM)
     
-    headers = {"User-Agent": "OTT Navigator"}  # Mimicking OTT Navigator
+    headers = {"User-Agent": "OTT Navigator"}  # Mimic OTT Navigator
     try:
-        response = requests.get(m3u_url, headers=headers, timeout=10, stream=True)
+        response = requests.get(m3u_url, headers=headers, timeout=10)
         response.raise_for_status()
-        return Response(response.iter_content(chunk_size=1024), content_type='audio/x-mpegurl')
+
+        return Response(response.text, mimetype="application/x-mpegURL")  # ✅ FIXED Content-Type
+
     except requests.RequestException as e:
-        return Response(f"#EXTM3U\n#EXTINF:-1,Error: {str(e)}", content_type='audio/x-mpegurl')
+        return Response(f"#EXTM3U\n#EXTINF:-1,Error: {str(e)}", mimetype="application/x-mpegURL")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
