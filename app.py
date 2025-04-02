@@ -11,7 +11,7 @@ HTML_FORM = '''
 </head>
 <body>
     <h2>Enter M3U URL</h2>
-    <form method="get" action="/">
+    <form method="get" action="/playlist.m3u">
         <input type="text" name="url" placeholder="Enter M3U URL" required>
         <button type="submit">Submit</button>
     </form>
@@ -19,24 +19,26 @@ HTML_FORM = '''
 </html>
 '''
 
-def convert_mpd_to_hls(mpd_url):
-    # Placeholder function: Replace with actual MPD-to-HLS conversion
-    return mpd_url.replace("manifest.mpd", "playlist.m3u8")
-
 @app.route('/')
+def home():
+    return render_template_string(HTML_FORM)
+
+@app.route('/playlist.m3u')
 def serve_m3u():
     m3u_url = request.args.get('url')
     if not m3u_url:
-        return render_template_string(HTML_FORM)
+        return Response("#EXTM3U\n#EXTINF:-1,Error: No URL provided", mimetype='audio/x-mpegurl')
     
     headers = {"User-Agent": "OTT Navigator"}  # Mimicking OTT Navigator
     try:
-        response = requests.get(m3u_url, headers=headers, timeout=10)
+        response = requests.get(m3u_url, headers=headers, timeout=10, stream=True)
         response.raise_for_status()
         
-        # Convert MPD URLs to HLS URLs in the playlist
-        m3u_content = response.text.replace("manifest.mpd", "playlist.m3u8")
-        return Response(m3u_content, mimetype='audio/x-mpegurl')
+        def generate():
+            for chunk in response.iter_content(chunk_size=1024):
+                yield chunk
+        
+        return Response(generate(), content_type='audio/x-mpegurl')
     except requests.RequestException as e:
         return Response(f"#EXTM3U\n#EXTINF:-1,Error: {str(e)}", mimetype='audio/x-mpegurl')
 
